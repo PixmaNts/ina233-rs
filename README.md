@@ -46,22 +46,24 @@ Datasheets :  [INA233](https://www.ti.com/lit/ds/symlink/ina233.pdf?)
 To use this driver, import this crate and an `embedded_hal` implementation,
 then instantiate the device.
 
-```rust
-use embedded_hal::blocking::delay::DelayMs;
+```rust,no_run
+use embedded_hal::delay::DelayNs;
 use linux_embedded_hal::{Delay, I2cdev};
 use ina233_rs::Ina233;
 
-fn main() {
-    let mut delay = Delay {};
-    let dev = I2cdev::new("/dev/i2c-1").unwrap();
-    let mut ina233 = Ina233::new(dev, 0x45, 0.008);
-    loop {
-        let current = ina233.read_mfr_vshunt_current().unwrap();
-        let voltage = ina233.read_vin().unwrap();
+let mut delay = Delay {};
+let dev = I2cdev::new("/dev/i2c-1").unwrap();
+let mut ina233 = Ina233::new(dev, 0x45, 0.008);
 
-        println!("Power = {}W", current*voltage);
-        delay.delay_ms(1000);
-    }
+// Calibrate for expected maximum current of 10A
+ina233.calibrate(10.0, 0.008).unwrap();
+
+loop {
+    let current = ina233.read_mfr_vshunt_current().unwrap();
+    let voltage = ina233.read_vin().unwrap();
+
+    println!("Power = {}W", current * voltage);
+    delay.delay_ms(1000);
 }
 ```
 
@@ -75,9 +77,9 @@ For questions, issues, feature requests, and other changes, please file an
 Licensed under either of
 
  * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
-   http://www.apache.org/licenses/LICENSE-2.0)
+   <http://www.apache.org/licenses/LICENSE-2.0>)
  * MIT license ([LICENSE-MIT](LICENSE-MIT) or
-   http://opensource.org/licenses/MIT)
+   <http://opensource.org/licenses/MIT>)
 
 at your option.
 

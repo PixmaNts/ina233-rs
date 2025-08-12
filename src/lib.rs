@@ -1,6 +1,7 @@
 #![no_std]
+#![doc = include_str!("../README.md")]
+
 use embedded_hal::i2c::I2c;
-/// for the macro pmbus_command
 use paste::paste;
 
 /// A list of possible errors that can occur within this crate.
@@ -14,18 +15,56 @@ pub enum Error<E> {
 }
 
 // SI units
-/// In Volts
+/// Voltage measurement in Volts.
 pub type Voltage = f32;
 
-// In Amperes
+/// Current measurement in Amperes.
 pub type Current = f32;
 
-// In Watts
+/// Power measurement in Watts.
 pub type Power = f32;
 
-// In Ohms
+/// Resistance measurement in Ohms.
 pub type Ohms = f32;
-/// Represents an INA233 device with associated I2C communications.
+/// Driver for the Texas Instruments INA233 High-Side or Low-Side Measurement, 
+/// Bidirectional Current and Power Monitor.
+///
+/// The INA233 is a current, voltage, and power monitor with an I2C-, SMBus-, 
+/// and PMBus-compatible interface. It monitors current, voltage, and power with 
+/// programmable calibration, conversion times, and averaging.
+///
+/// # Features
+/// - Bus voltage range: 0V to 36V
+/// - Supply voltage: 2.7V to 5.5V  
+/// - Operating temperature: -40°C to +125°C
+/// - Up to 16 programmable I2C addresses
+/// - Integrated power accumulator
+/// - Low-power standby mode (2μA typical)
+///
+/// # Example
+/// ```no_run
+/// use embedded_hal::delay::DelayNs;
+/// use linux_embedded_hal::{Delay, I2cdev};
+/// use ina233_rs::Ina233;
+///
+/// // Initialize I2C interface
+/// let dev = I2cdev::new("/dev/i2c-1").unwrap();
+/// 
+/// // Create INA233 driver instance
+/// // Address: 0x45, Shunt resistance: 8 milliohms  
+/// let mut ina233 = Ina233::new(dev, 0x45, 0.008);
+/// 
+/// // Calibrate for expected maximum current of 10A
+/// ina233.calibrate(10.0, 0.008).unwrap();
+///
+/// // Read measurements
+/// let current = ina233.read_mfr_vshunt_current().unwrap();
+/// let voltage = ina233.read_vin().unwrap(); 
+/// let power = current * voltage;
+/// 
+/// println!("Current: {:.3}A, Voltage: {:.2}V, Power: {:.3}W", 
+///          current, voltage, power);
+/// ```
 pub struct Ina233<I2C> {
     /// The I2C interface.
     i2c: I2C,
@@ -484,6 +523,20 @@ impl<I2C, E> Ina233<I2C>
 where
     I2C: I2c<Error = E>,
 {
+    /// Creates a new INA233 driver instance.
+    /// 
+    /// # Parameters
+    /// * `i2c` - I2C interface implementing embedded-hal I2c trait
+    /// * `address` - I2C address of the INA233 device (0x40-0x4F)
+    /// * `shunt_resistance_ohms` - Shunt resistance value in Ohms
+    /// 
+    /// # Example
+    /// ```no_run
+    /// # use linux_embedded_hal::I2cdev;
+    /// # use ina233_rs::Ina233;
+    /// let i2c = I2cdev::new("/dev/i2c-1").unwrap();
+    /// let ina233 = Ina233::new(i2c, 0x45, 0.008); // 8 milliohm shunt
+    /// ```
     pub fn new(i2c: I2C, address: u8, shunt_resistance_ohms: f32) -> Self {
         Ina233 {
             i2c,
@@ -495,15 +548,17 @@ where
         }
     }
 
+    /// Returns the configured shunt resistance value in Ohms.
     pub fn get_shunt_resistance(&self) -> Ohms {
         self.shunt_resistance_ohms
     }
 
+    /// Returns the maximum expected current value in Amperes used for calibration.
     pub fn get_max_expected_current(&self) -> Current {
         self.max_expected_current
     }
 
-    /// return the current_lsb value in Amperes calculated from the max_expected_current
+    /// Returns the current LSB value in Amperes calculated from the maximum expected current.
     pub fn get_current_lsb(&self) -> f32 {
         self.current_lsb
     }
@@ -570,6 +625,7 @@ where
         Ok(limit as f32 * self.current_lsb)
     }
 
+    /// Sets the power warning limit in Watts.
     pub fn set_pin_op_warn_limit(&mut self, limit: Power) -> Result<(), Error<E>> {
         if limit > self.max_expected_current * Self::CURRENT_LSB_TO_POWER_LSB {
             return Err(Error::InvalidInputData);
@@ -579,16 +635,19 @@ where
         self.write_pin_op_warn_limit(limit)
     }
 
+    /// Gets the power warning limit in Watts.
     pub fn get_pin_op_warn_limit(&mut self) -> Result<Power, Error<E>> {
         let limit = self.read_pin_op_warn_limit()?;
         Ok(limit as f32 * self.power_lsb)
     }
 
+    /// Checks if input current overcurrent warning limit has been exceeded.
     pub fn is_iin_oc_warn_limit(&mut self) -> Result<bool, Error<E>> {
         let status = self.read_n_clear_status_mfr_specific()?;
         Ok((status & 0x04) != 0)
     }
 
+    /// Reads the average power from the energy accumulator in Watts.
     pub fn read_average_power(&mut self) -> Result<Power, Error<E>> {
         let result = self.read_ein()?;
         let accumulator = (result[0] as u32) << 8 | (result[1] as u32);

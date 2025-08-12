@@ -1,7 +1,7 @@
 [package]
 name = "ina233-rs"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 authors = ["Maxime Pointet <pixma@pixma.fr>"]
 repository = "https://github.com/PixmaNts/ina233-rs"
 license = "MIT OR Apache-2.0"
@@ -10,6 +10,11 @@ readme = "README.md"
 keywords = ["current", "power-monitor", "sensor", "embedded-hal-driver", "ina233"]
 categories = ["embedded", "hardware-support", "no-std"]
 homepage = "https://github.com/PixmaNts/ina233-rs"
+rust-version = "1.75"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 embedded-hal = "1.0"
