@@ -1,4 +1,8 @@
 # Ina233-rs
+
+[![Crates.io](https://img.shields.io/crates/v/ina233-rs.svg)](https://crates.io/crates/ina233-rs)
+[![Documentation](https://docs.rs/ina233-rs/badge.svg)](https://docs.rs/ina233-rs)
+
 Platform-agnostic Rust driver for the TI INA233 High-Side or Low-Side Measurement, Bidirectional Current and Power Monitor
 It's using the [`embedded-hal`]
 
